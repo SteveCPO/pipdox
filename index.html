@@ -18,6 +18,10 @@
             min-height: 100vh;
             padding: 1rem;
             box-sizing: border-box;
+            /* Ensure body fills viewport and allows for rotation handling */
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden; /* Hide scrollbars that might appear due to rotation */
         }
         .container {
             background-color: #ffffff;
@@ -30,7 +34,41 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            /* Flexbox for vertical centering within the rotated context */
+            justify-content: center;
+            flex-grow: 1; /* Allow container to grow */
+            position: relative; /* For rotation */
+            transition: transform 0.3s ease-in-out; /* Smooth rotation */
+            /* Set a fixed aspect ratio or max-height for the container to prevent distortion */
+            max-height: 90vh; /* Adjust as needed */
         }
+
+        /* Media queries for orientation handling */
+        @media screen and (orientation: landscape) {
+            body {
+                /* Center the rotated content */
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .container {
+                /* Rotate the container for landscape view to appear as portrait */
+                transform: rotate(90deg);
+                /* Adjust width/height to swap them for landscape rotation */
+                width: 90vh; /* Use viewport height as width in landscape */
+                max-width: 90vh; /* Max width based on landscape height */
+                height: 90vw; /* Use viewport width as height in landscape */
+                max-height: 90vw; /* Max height based on landscape width */
+                /* Ensure content remains centered after rotation */
+                margin: 0; /* Remove margin to allow full centering */
+            }
+            /* Adjust video and textarea within rotated container */
+            video, textarea {
+                max-width: 100%; /* Ensure they fit within the new container dimensions */
+            }
+        }
+
+
         video {
             width: 100%;
             max-width: 500px;
@@ -172,6 +210,7 @@
         const loadingIndicator = document.getElementById('loadingIndicator');
         const messageBox = document.getElementById('messageBox');
         const videoContainer = video.parentElement; // Get the parent div for positioning focus square
+        const mainContainer = document.querySelector('.container'); // Get the main container
 
         let stream; // To hold the camera stream
 
@@ -209,13 +248,17 @@
                 video.play();
                 showMessage("Camera ready! Tap the video to help focus.", 'info');
 
-                // Attempt to lock screen orientation to portrait
-                try {
-                    await screen.orientation.lock('portrait');
-                    console.log("Screen orientation locked to portrait.");
-                } catch (orientationError) {
-                    console.warn("Could not lock screen orientation:", orientationError);
-                    showMessage("Screen orientation could not be locked. You might need to adjust your device settings.", 'info');
+                // Attempt to lock screen orientation to portrait (best effort)
+                if (screen.orientation && screen.orientation.lock) {
+                    try {
+                        await screen.orientation.lock('portrait');
+                        console.log("Screen orientation locked to portrait.");
+                    } catch (orientationError) {
+                        console.warn("Could not lock screen orientation:", orientationError);
+                        showMessage("Screen orientation could not be locked. Content will attempt to stay portrait.", 'info');
+                    }
+                } else {
+                    showMessage("Screen orientation locking not supported by this browser/device. Content will attempt to stay portrait.", 'info');
                 }
 
             } catch (err) {
@@ -364,4 +407,3 @@
     </script>
 </body>
 </html>
-
