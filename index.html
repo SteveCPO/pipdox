@@ -208,6 +208,16 @@
                 video.srcObject = stream;
                 video.play();
                 showMessage("Camera ready! Tap the video to help focus.", 'info');
+
+                // Attempt to lock screen orientation to portrait
+                try {
+                    await screen.orientation.lock('portrait');
+                    console.log("Screen orientation locked to portrait.");
+                } catch (orientationError) {
+                    console.warn("Could not lock screen orientation:", orientationError);
+                    showMessage("Screen orientation could not be locked. You might need to adjust your device settings.", 'info');
+                }
+
             } catch (err) {
                 console.error("Error accessing camera: ", err);
                 showMessage("Failed to access camera. Please ensure camera permissions are granted.", 'error');
@@ -354,3 +364,4 @@
     </script>
 </body>
 </html>
+
