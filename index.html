@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan & Email Text</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for better mobile experience and aesthetics */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* More rounded corners */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        video {
+            width: 100%;
+            max-width: 500px;
+            height: auto;
+            background-color: #000;
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+            border: 2px solid #cbd5e1; /* Light border */
+        }
+        canvas {
+            display: none; /* Hidden canvas for image processing */
+        }
+        button {
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+            border-radius: 0.75rem;
+            border: 1px solid #d1d5db;
+            padding: 0.75rem;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .message-box {
+            background-color: #e0f2fe; /* Light blue background */
+            color: #0c4a6e; /* Darker blue text */
+            border: 1px solid #90cdf4;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            text-align: center;
+            font-size: 0.9rem;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .hidden {
+            display: none;
+        }
+        /* Loading spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #3b82f6; /* Blue spinner */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+    <div class="container">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4">Scan & Email Text</h1>
+
+        <!-- Video feed from camera -->
+        <video id="video" autoplay playsinline class="rounded-xl shadow-md"></video>
+
+        <!-- Capture button -->
+        <button id="captureButton"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-4 flex items-center justify-center">
+            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            Scan Text
+        </button>
+
+        <!-- Loading indicator for OCR -->
+        <div id="loadingIndicator" class="hidden flex items-center justify-center text-blue-600 font-medium mb-4">
+            <div class="spinner"></div>
+            <span>Processing text...</span>
+        </div>
+
+        <!-- Textarea to display OCR result -->
+        <textarea id="ocrText"
+                  class="w-full border border-gray-300 rounded-lg p-3 mb-4 text-gray-800 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Scanned text will appear here..." readonly></textarea>
+
+        <!-- Email button -->
+        <button id="emailButton"
+                class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 flex items-center justify-center"
+                disabled>
+            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8m-2 6V5a2 2 0 00-2-2H5a2 2 0 00-2 2v9m18 0a2 2 0 01-2 2H5a2 2 0 01-2-2m18 0v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2"></path></svg>
+            Email Scanned Text
+        </button>
+    </div>
+
+    <!-- Message box for user feedback -->
+    <div id="messageBox" class="message-box hidden"></div>
+
+    <!-- Hidden canvas for image processing -->
+    <canvas id="canvas"></canvas>
+
+    <!-- Tesseract.js CDN -->
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        const captureButton = document.getElementById('captureButton');
+        const ocrTextarea = document.getElementById('ocrText');
+        const emailButton = document.getElementById('emailButton');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const messageBox = document.getElementById('messageBox');
+
+        let stream; // To hold the camera stream
+
+        // Function to display messages to the user
+        function showMessage(message, type = 'info') {
+            messageBox.textContent = message;
+            messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800', 'bg-blue-100', 'text-blue-800');
+            messageBox.classList.add('block'); // Ensure it's visible
+
+            if (type === 'error') {
+                messageBox.classList.add('bg-red-100', 'text-red-800', 'border-red-400');
+            } else if (type === 'success') {
+                messageBox.classList.add('bg-green-100', 'text-green-800', 'border-green-400');
+            } else { // info
+                messageBox.classList.add('bg-blue-100', 'text-blue-800', 'border-blue-400');
+            }
+        }
+
+        function hideMessage() {
+            messageBox.classList.add('hidden');
+        }
+
+        // Initialize camera on window load
+        window.onload = async function() {
+            try {
+                // Request camera access, preferring the environment (back) camera
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment' // 'user' for front camera, 'environment' for back camera
+                    }
+                });
+                video.srcObject = stream;
+                video.play();
+                showMessage("Camera ready! Position text clearly in view.", 'info');
+            } catch (err) {
+                console.error("Error accessing camera: ", err);
+                showMessage("Failed to access camera. Please ensure camera permissions are granted.", 'error');
+                captureButton.disabled = true; // Disable button if camera fails
+            }
+        };
+
+        // Function to apply image processing filters
+        function applyImageFilters(imageData) {
+            const data = imageData.data;
+            const threshold = 128; // Simple threshold for binarization
+
+            for (let i = 0; i < data.length; i += 4) {
+                // Grayscale conversion (using luminosity method)
+                const avg = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+
+                // Apply simple contrast enhancement (adjust factor as needed)
+                let contrast = (avg - 128) * 1.5 + 128;
+                contrast = Math.max(0, Math.min(255, contrast)); // Clamp values
+
+                // Binarization (thresholding)
+                const binarized = contrast > threshold ? 255 : 0;
+
+                data[i] = binarized;     // Red
+                data[i + 1] = binarized; // Green
+                data[i + 2] = binarized; // Blue
+                // Alpha (data[i + 3]) remains unchanged
+            }
+            return imageData;
+        }
+
+        // Event listener for the capture button
+        captureButton.addEventListener('click', async () => {
+            hideMessage();
+            ocrTextarea.value = ''; // Clear previous text
+            emailButton.disabled = true; // Disable email button until OCR is done
+            loadingIndicator.classList.remove('hidden'); // Show loading spinner
+            captureButton.disabled = true; // Disable capture button during processing
+
+            // Set canvas dimensions to match video feed
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            // Draw the current video frame onto the canvas
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Get image data from canvas
+            let imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+
+            // Apply image processing filters
+            imageData = applyImageFilters(imageData);
+
+            // Put processed image data back onto the canvas
+            context.putImageData(imageData, 0, 0);
+
+            // Get image data URL from processed canvas
+            const imageDataUrl = canvas.toDataURL('image/png');
+
+            try {
+                // Initialize Tesseract worker and perform OCR
+                const worker = await Tesseract.createWorker('eng', 1, {
+                    logger: m => {
+                        // Log OCR progress (optional)
+                        if (m.status === 'recognizing text') {
+                            showMessage(`OCR Progress: ${Math.round(m.progress * 100)}%`, 'info');
+                        }
+                    }
+                });
+                const { data: { text } } = await worker.recognize(imageDataUrl);
+                await worker.terminate(); // Terminate worker to free up resources
+
+                ocrTextarea.value = text.trim(); // Display the extracted text
+                emailButton.disabled = false; // Enable email button
+                showMessage("Text scanned successfully!", 'success');
+
+            } catch (error) {
+                console.error("OCR Error:", error);
+                ocrTextarea.value = "Error during OCR. Please try again or check the image quality.";
+                showMessage("Error scanning text. Please try again.", 'error');
+            } finally {
+                loadingIndicator.classList.add('hidden'); // Hide loading spinner
+                captureButton.disabled = false; // Re-enable capture button
+            }
+        });
+
+        // Event listener for the email button
+        emailButton.addEventListener('click', () => {
+            const scannedText = ocrTextarea.value;
+            if (scannedText) {
+                // Encode the text for URL to handle special characters
+                const subject = encodeURIComponent("Scanned Text from My App");
+                const body = encodeURIComponent(scannedText);
+                // Construct the mailto link
+                const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
+                window.location.href = mailtoLink; // Open default email client
+            } else {
+                showMessage("No text to email. Please scan text first.", 'info');
+            }
+        });
+
+        // Handle window resize to ensure video and canvas adapt
+        window.addEventListener('resize', () => {
+            // No direct resize needed for video/canvas as they are width:100% and auto height
+            // The canvas dimensions are set just before drawing the image, which is fine.
+        });
+    </script>
+</body>
+</html>
