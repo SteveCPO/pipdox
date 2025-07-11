@@ -39,6 +39,7 @@
             border-radius: 1rem;
             margin-bottom: 1rem;
             border: 2px solid #cbd5e1; /* Light border */
+            position: relative; /* Needed for focus square positioning */
         }
         canvas {
             display: none; /* Hidden canvas for image processing */
@@ -94,6 +95,24 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Focus square for tap-to-focus visual feedback */
+        .focus-square {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 2px solid #3b82f6; /* Blue border */
+            border-radius: 0.5rem;
+            opacity: 0;
+            transform: scale(1.2);
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+            pointer-events: none; /* Allows clicks to pass through to video */
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+        .focus-square.active {
+            opacity: 1;
+            transform: scale(1);
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-4">
@@ -101,7 +120,11 @@
         <h1 class="text-3xl font-bold text-gray-800 mb-4">Scan & Email Text</h1>
 
         <!-- Video feed from camera -->
-        <video id="video" autoplay playsinline class="rounded-xl shadow-md"></video>
+        <div style="position: relative; width: 100%; max-width: 500px;">
+            <video id="video" autoplay playsinline class="rounded-xl shadow-md"></video>
+            <!-- Focus square will be appended here -->
+        </div>
+
 
         <!-- Capture button -->
         <button id="captureButton"
@@ -148,6 +171,7 @@
         const emailButton = document.getElementById('emailButton');
         const loadingIndicator = document.getElementById('loadingIndicator');
         const messageBox = document.getElementById('messageBox');
+        const videoContainer = video.parentElement; // Get the parent div for positioning focus square
 
         let stream; // To hold the camera stream
 
@@ -174,14 +198,16 @@
         window.onload = async function() {
             try {
                 // Request camera access, preferring the environment (back) camera
+                // and requesting continuous focus mode if supported
                 stream = await navigator.mediaDevices.getUserMedia({
                     video: {
-                        facingMode: 'environment' // 'user' for front camera, 'environment' for back camera
+                        facingMode: 'environment', // 'user' for front camera, 'environment' for back camera
+                        advanced: [{ focusMode: 'continuous' }] // Request continuous autofocus
                     }
                 });
                 video.srcObject = stream;
                 video.play();
-                showMessage("Camera ready! Position text clearly in view.", 'info');
+                showMessage("Camera ready! Tap the video to help focus.", 'info');
             } catch (err) {
                 console.error("Error accessing camera: ", err);
                 showMessage("Failed to access camera. Please ensure camera permissions are granted.", 'error');
@@ -280,6 +306,44 @@
             } else {
                 showMessage("No text to email. Please scan text first.", 'info');
             }
+        });
+
+        // Tap-to-focus visual feedback
+        video.addEventListener('click', (event) => {
+            // Remove any existing focus squares
+            const existingFocusSquare = document.querySelector('.focus-square');
+            if (existingFocusSquare) {
+                existingFocusSquare.remove();
+            }
+
+            // Create new focus square element
+            const focusSquare = document.createElement('div');
+            focusSquare.classList.add('focus-square');
+
+            // Position the square at the tap location relative to the video container
+            const videoRect = video.getBoundingClientRect();
+            const x = event.clientX - videoRect.left - (focusSquare.offsetWidth / 2);
+            const y = event.clientY - videoRect.top - (focusSquare.offsetHeight / 2);
+
+            focusSquare.style.left = `${x}px`;
+            focusSquare.style.top = `${y}px`;
+
+            videoContainer.appendChild(focusSquare);
+
+            // Trigger animation
+            setTimeout(() => {
+                focusSquare.classList.add('active');
+            }, 10); // Small delay to ensure reflow for transition
+
+            // Remove square after a short duration
+            setTimeout(() => {
+                focusSquare.classList.remove('active');
+                focusSquare.addEventListener('transitionend', () => {
+                    focusSquare.remove();
+                }, { once: true });
+            }, 800); // Display for 0.8 seconds
+
+            showMessage("Tapped! Try moving your phone slightly to help the camera focus.", 'info');
         });
 
         // Handle window resize to ensure video and canvas adapt
