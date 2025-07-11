@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scan & Email Text</title>
+    <!-- Link to the Web App Manifest -->
+    <link rel="manifest" href="manifest.json">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -18,10 +20,9 @@
             min-height: 100vh;
             padding: 1rem;
             box-sizing: border-box;
-            /* Ensure body fills viewport and allows for rotation handling */
             width: 100vw;
             height: 100vh;
-            overflow: hidden; /* Hide scrollbars that might appear due to rotation */
+            overflow: hidden; /* Prevent scrolling */
         }
         .container {
             background-color: #ffffff;
@@ -34,40 +35,10 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            /* Flexbox for vertical centering within the rotated context */
             justify-content: center;
             flex-grow: 1; /* Allow container to grow */
-            position: relative; /* For rotation */
-            transition: transform 0.3s ease-in-out; /* Smooth rotation */
-            /* Set a fixed aspect ratio or max-height for the container to prevent distortion */
-            max-height: 90vh; /* Adjust as needed */
+            position: relative;
         }
-
-        /* Media queries for orientation handling */
-        @media screen and (orientation: landscape) {
-            body {
-                /* Center the rotated content */
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            .container {
-                /* Rotate the container for landscape view to appear as portrait */
-                transform: rotate(90deg);
-                /* Adjust width/height to swap them for landscape rotation */
-                width: 90vh; /* Use viewport height as width in landscape */
-                max-width: 90vh; /* Max width based on landscape height */
-                height: 90vw; /* Use viewport width as height in landscape */
-                max-height: 90vw; /* Max height based on landscape width */
-                /* Ensure content remains centered after rotation */
-                margin: 0; /* Remove margin to allow full centering */
-            }
-            /* Adjust video and textarea within rotated container */
-            video, textarea {
-                max-width: 100%; /* Ensure they fit within the new container dimensions */
-            }
-        }
-
 
         video {
             width: 100%;
@@ -163,7 +134,6 @@
             <!-- Focus square will be appended here -->
         </div>
 
-
         <!-- Capture button -->
         <button id="captureButton"
                 class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-4 flex items-center justify-center">
@@ -210,7 +180,6 @@
         const loadingIndicator = document.getElementById('loadingIndicator');
         const messageBox = document.getElementById('messageBox');
         const videoContainer = video.parentElement; // Get the parent div for positioning focus square
-        const mainContainer = document.querySelector('.container'); // Get the main container
 
         let stream; // To hold the camera stream
 
@@ -233,6 +202,19 @@
             messageBox.classList.add('hidden');
         }
 
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registered with scope:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.error('Service Worker registration failed:', error);
+                    });
+            });
+        }
+
         // Initialize camera on window load
         window.onload = async function() {
             try {
@@ -248,17 +230,17 @@
                 video.play();
                 showMessage("Camera ready! Tap the video to help focus.", 'info');
 
-                // Attempt to lock screen orientation to portrait (best effort)
+                // Attempt to lock screen orientation to portrait (best effort for PWAs)
                 if (screen.orientation && screen.orientation.lock) {
                     try {
                         await screen.orientation.lock('portrait');
                         console.log("Screen orientation locked to portrait.");
                     } catch (orientationError) {
                         console.warn("Could not lock screen orientation:", orientationError);
-                        showMessage("Screen orientation could not be locked. Content will attempt to stay portrait.", 'info');
+                        showMessage("Screen orientation could not be locked. Ensure PWA is installed for best results.", 'info');
                     }
                 } else {
-                    showMessage("Screen orientation locking not supported by this browser/device. Content will attempt to stay portrait.", 'info');
+                    showMessage("Screen orientation locking not supported by this browser/device. Consider installing as PWA.", 'info');
                 }
 
             } catch (err) {
@@ -397,12 +379,6 @@
             }, 800); // Display for 0.8 seconds
 
             showMessage("Tapped! Try moving your phone slightly to help the camera focus.", 'info');
-        });
-
-        // Handle window resize to ensure video and canvas adapt
-        window.addEventListener('resize', () => {
-            // No direct resize needed for video/canvas as they are width:100% and auto height
-            // The canvas dimensions are set just before drawing the image, which is fine.
         });
     </script>
 </body>
